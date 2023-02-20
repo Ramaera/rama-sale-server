@@ -154,8 +154,10 @@ app
   .use(router.routes())
   .use(router.allowedMethods())
 
-app.listen(8080, () => {
-  console.log('Server running at: http://localhost:8080')
+
+const PORT = process.env.PORT
+app.listen(PORT, () => {
+  console.log(`Server running at: http://localhost:${PORT}`)
   initCrons()
 
 })
