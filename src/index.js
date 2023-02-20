@@ -1,4 +1,6 @@
 // src/index.js
+require('dotenv').config()
+
 const { PrismaClient } = require('@prisma/client')
 const Koa = require('koa')
 const Router = require('@koa/router')
