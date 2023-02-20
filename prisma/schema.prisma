@@ -1,0 +1,30 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // provider = "postgresql"
+  // url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+
+
+model Purchase {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  coinPaymentTxnId String @unique
+  currency String 
+  currencyAmount String
+  usdAmount String 
+  ramaWallet String
+  paymentStatus Int @default(0)
+  isStaked Boolean @default(false)
+  stakingHash String?
+  ramaAmount String?
+}
