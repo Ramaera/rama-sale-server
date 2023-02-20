@@ -48,7 +48,7 @@ router.post('/createTxn', async (ctx) => {
     currency1: "usd",
     currency2: ctx.request.body.toCurrency,
     amount: ctx.request.body.usdAmount,
-    buyer_email: "shahzeb8285@gmail.com",
+    buyer_email: "shahzeb@ramaera.com",
     custom: ctx.request.body.walletAddress
   }
   const resp = await coinpaymentClient.createTransaction(options)
