@@ -28,3 +28,4 @@ model Purchase {
   stakingHash String?
   ramaAmount String?
 }
+

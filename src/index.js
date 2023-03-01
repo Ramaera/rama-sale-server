@@ -1,5 +1,7 @@
 // src/index.js
 require('dotenv').config()
+process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
+
 
 const { PrismaClient } = require('@prisma/client')
 const Koa = require('koa')
@@ -15,28 +17,25 @@ const prisma = new PrismaClient()
 const cron = require('node-cron');
 const moment = require("moment");
 const Web3 = require("web3");
-var ethers = require('ethers');  
-const { JsonRpcProvider,parseEther } = require("ethers");
-
 const STAKING_ABI = require("./abi/StakingContract.json")
-const provider = new JsonRpcProvider(config.RPC);
-const wallet = new ethers.Wallet(process.env.ADMIN_PRIVATE_KEY,provider);
-const stakingContract = new ethers.Contract(config.STAKING_CONTRACT,STAKING_ABI,wallet);
-
-
+// const Web3HDWalletProvider = require("web3-hdwallet-provider");
+var provider = new Web3.providers.HttpProvider(config.RPC);
+const web3 = new Web3(provider);
+const stakingContract = new web3.eth.Contract(STAKING_ABI, config.STAKING_CONTRACT);
+const { address: admin } = web3.eth.accounts.wallet.add(process.env.ADMIN_PRIVATE_KEY)
 
 const coinpaymentClient = new Coinpayments({
   key: process.env.COINPAYMENT_KEY,
   secret: process.env.COINPAYMENT_SECRET
 })
-
-router.get("/test", async (ctx) => { 
+router.get("/test", async (ctx) => {
   ctx.response.status = 201
   ctx.body = {
     message: 'Working',
-   
   }
 })
+
+
 
 router.post('/createTxn', async (ctx) => {
 
@@ -113,6 +112,7 @@ const checkForUnmarkedPayments = async () => {
 
 
 
+
 const checkForStakedPayments = async () => {
 
   const allUnstakedPayments = await prisma.purchase.findMany({
@@ -121,28 +121,49 @@ const checkForStakedPayments = async () => {
         equals: false
       },
       paymentStatus: {
-        equals: 1
+        equals: 100
       }
     }
   });
 
 
   for (let payment of allUnstakedPayments) {
-    
-    const txn = await stakingContract.stake(payment.ramaWallet,{value: parseEther(payment.ramaAmount.toString())})
-    const stakingHash = txn.hash
+    console.log(payment)
+
+
+
+    const gasPrice = await web3.eth.getGasPrice();
+    const gasEstimate = await stakingContract.methods.stake(payment.ramaWallet).estimateGas({
+      from: process.env.ADMIN_WALLET, value: Web3.utils.toWei(payment.ramaAmount),
+    });
+
+    const txn = await stakingContract.methods.stake(payment.ramaWallet).send(
+      {
+        value: Web3.utils.toWei(payment.ramaAmount),
+        from: process.env.ADMIN_WALLET,
+        gasPrice: gasPrice, gas: gasEstimate
+      })
+
+
+
+
     await prisma.purchase.update({
       where: {
         id: payment.id
       },
       data: {
-        stakingHash,
-        isStaked:true
+        stakingHash:txn.transactionHash,
+        isStaked: true
       },
     })
 
   }
 }
+
+
+
+
+
 
 const initCrons = () => {
   cron.schedule('* * * * *', async () => {
@@ -151,6 +172,7 @@ const initCrons = () => {
   });
 
 }
+
 
 app
   .use(router.routes())
@@ -161,5 +183,4 @@ const PORT = process.env.PORT
 app.listen(PORT, () => {
   console.log(`Server running at: http://localhost:${PORT}`)
   initCrons()
-
 })
